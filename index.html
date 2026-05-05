@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ギター楽譜メモ</title>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #faf8f4;
+  --bg2:       #f2efe8;
+  --bg3:       #e8e4da;
+  --surface:   #ffffff;
+  --text:      #1a1814;
+  --text2:     #6b6560;
+  --text3:     #a09890;
+  --accent:    #b5341a;
+  --accent2:   #d94422;
+  --accent-bg: #fdf1ee;
+  --border:    rgba(90,80,60,0.13);
+  --border2:   rgba(90,80,60,0.25);
+  --shadow:    0 2px 12px rgba(0,0,0,0.07);
+  --shadow2:   0 4px 24px rgba(0,0,0,0.12);
+  --radius:    10px;
+  --radius2:   16px;
+  --font-display: 'Shippori Mincho', serif;
+  --font-mono:    'JetBrains Mono', monospace;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--font-display);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* ── Header ── */
+#app-header {
+  position: sticky; top: 0; z-index: 50;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: var(--shadow);
+}
+#app-header .logo {
+  font-size: 17px; font-weight: 600; letter-spacing: 0.02em;
+  color: var(--text);
+  display: flex; align-items: center; gap: 8px;
+}
+#app-header .logo span { color: var(--accent); }
+
+/* ── Layout ── */
+#app { max-width: 860px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-display); font-size: 13px; font-weight: 500;
+  padding: 7px 16px; border-radius: var(--radius);
+  border: 1px solid var(--border2); background: var(--surface);
+  color: var(--text); cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+.btn:hover { background: var(--bg2); border-color: var(--border2); }
+.btn:active { transform: scale(0.97); }
+.btn-accent {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+.btn-accent:hover { background: var(--accent2); border-color: var(--accent2); }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.btn-ghost { border-color: transparent; background: transparent; }
+.btn-ghost:hover { background: var(--bg2); border-color: var(--border); }
+.btn-danger { color: var(--accent); }
+.btn-danger:hover { background: var(--accent-bg); border-color: var(--accent); }
+
+/* ── Song List ── */
+.list-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.75rem;
+}
+.list-header h2 { font-size: 22px; font-weight: 600; letter-spacing: 0.01em; }
+.list-header .sub { font-size: 13px; color: var(--text2); margin-top: 2px; }
+
+.song-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+.song-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  padding: 1.25rem 1.25rem 1rem;
+  cursor: pointer;
+  transition: box-shadow 0.2s, border-color 0.2s, transform 0.15s;
+  position: relative;
+}
+.song-card:hover {
+  box-shadow: var(--shadow2);
+  border-color: var(--border2);
+  transform: translateY(-2px);
+}
+.song-card-title {
+  font-size: 16px; font-weight: 600;
+  margin-bottom: 6px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.song-card-meta { font-size: 12px; color: var(--text2); }
+.song-card-actions {
+  display: flex; gap: 6px; margin-top: 14px;
+  padding-top: 10px; border-top: 1px solid var(--border);
+}
+
+.empty-state {
+  text-align: center; padding: 5rem 2rem;
+  color: var(--text2);
+}
+.empty-state .icon {
+  font-size: 48px; margin-bottom: 1rem; opacity: 0.4;
+}
+.empty-state p { font-size: 15px; }
+
+/* ── Score View ── */
+.score-nav {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 2rem;
+}
+.score-title {
+  font-size: 24px; font-weight: 600; flex: 1;
+  letter-spacing: 0.01em;
+}
+
+.score-body { }
+
+/* 1行 = セグメントが下端揃えで横に並ぶ */
+.score-line {
+  display: flex; flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0 0;
+  margin-bottom: 2.5rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px dashed var(--border2);
+}
+.score-line:last-child { border-bottom: none; }
+
+/* セグメント: column = コード部(上) + 歌詞(下)、左端揃え */
+.seg {
+  display: inline-flex; flex-direction: column;
+  align-items: flex-start; /* 図の左端＝歌詞の先頭文字の真上 */
+  margin-right: 28px;      /* セグメント間の余白 */
+}
+.seg:last-child { margin-right: 0; }
+
+/* コード上部エリア: コード名（中央）＋図 */
+.seg-chord-area {
+  display: flex; flex-direction: column;
+  align-items: center;   /* コード名を図の中央揃えに */
+  margin-bottom: 4px;
+}
+.seg-chord-area .c-name {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 500;
+  color: var(--accent); letter-spacing: 0.03em;
+  margin-bottom: 3px;
+}
+
+/* 歌詞テキスト: SVGのマーカー列分(18px)だけ右にずらしてナット線と先頭文字を揃える */
+.seg-lyric {
+  font-size: 20px; font-weight: 500; color: var(--accent);
+  white-space: pre; line-height: 1.3;
+  padding-left: 18px;
+}
+
+/* ── Editor ── */
+.editor-nav {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 1.75rem;
+}
+.editor-nav-title { font-size: 18px; font-weight: 600; flex: 1; }
+
+.field-group { margin-bottom: 1.5rem; }
+.field-label {
+  display: block; font-size: 12px; font-weight: 500;
+  color: var(--text2); margin-bottom: 6px; letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+input[type=text], input[type=number], textarea {
+  width: 100%;
+  font-family: var(--font-display); font-size: 14px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border2); border-radius: var(--radius);
+  padding: 9px 12px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  outline: none;
+}
+input[type=text]:focus, input[type=number]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(181,52,26,0.1);
+}
+
+.lines-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.lines-header .field-label { margin-bottom: 0; }
+
+.line-row {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  padding: 1rem 1.125rem;
+  margin-bottom: 12px;
+  transition: border-color 0.15s;
+}
+.line-row:hover { border-color: var(--border2); }
+.line-row-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.line-row-num {
+  font-size: 11px; color: var(--text3); font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+}
+.chord-chips {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;
+}
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--accent-bg); border: 1px solid rgba(181,52,26,0.18);
+  border-radius: 20px; padding: 4px 10px 4px 12px;
+  font-size: 12px; cursor: pointer;
+  transition: background 0.15s;
+}
+.chip:hover { background: #fce5df; }
+.chip .chip-name { font-family: var(--font-mono); font-weight: 500; color: var(--accent); }
+.chip .chip-lyric { color: var(--text2); font-size: 11px; }
+.chip .chip-del {
+  color: var(--text3); font-size: 15px; line-height: 1;
+  margin-left: 2px; transition: color 0.1s;
+}
+.chip .chip-del:hover { color: var(--accent); }
+
+/* ── Chord Modal ── */
+.overlay {
+  position: fixed; inset: 0;
+  background: rgba(20,16,12,0.45);
+  backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200;
+  opacity: 1; transition: opacity 0.2s;
+}
+.overlay.hidden { display: none; }
+.modal {
+  background: var(--surface);
+  border-radius: var(--radius2);
+  border: 1px solid var(--border2);
+  box-shadow: var(--shadow2);
+  padding: 1.5rem;
+  width: 480px; max-width: 95vw;
+  max-height: 90vh; overflow-y: auto;
+}
+.modal-title { font-size: 17px; font-weight: 600; margin-bottom: 1.25rem; }
+.modal-footer {
+  display: flex; gap: 8px; justify-content: flex-end;
+  margin-top: 1.25rem; padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Fret Editor ── */
+.fret-wrap {
+  display: flex; gap: 16px; align-items: flex-start;
+  margin: 0.75rem 0;
+}
+.fret-board { user-select: none; }
+.fret-top-row { display: flex; margin-left: 22px; }
+.fret-num-cell {
+  width: 32px; height: 18px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 9px; color: var(--text3);
+}
+.fret-main-row { display: flex; }
+.str-label {
+  width: 22px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-mono); font-size: 10px; color: var(--text3);
+}
+.fret-row { display: flex; }
+.fret-cell {
+  width: 32px; height: 28px;
+  border: 0.5px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; font-size: 11px;
+  transition: background 0.1s;
+  position: relative;
+}
+.fret-cell:hover { background: var(--bg2); }
+.fret-cell.dot {
+  background: var(--text);
+}
+.fret-cell.dot::after {
+  content: '';
+  width: 14px; height: 14px;
+  border-radius: 50%; background: var(--text);
+  position: absolute;
+}
+.fret-cell.open { background: #e8f5e9; }
+.fret-cell.muted { background: #fceae8; }
+.fret-cell.open::after { content: '○'; background: none; font-size: 12px; color: #2e7d32; }
+.fret-cell.muted::after { content: '✕'; background: none; font-size: 12px; color: var(--accent); }
+
+.fret-hints {
+  font-size: 11px; color: var(--text2); line-height: 2;
+}
+.fret-hints b { color: var(--text); font-weight: 500; }
+
+.barre-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 8px; font-size: 12px; color: var(--text2);
+}
+.barre-row input { width: 56px; }
+.start-fret-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 6px; font-size: 12px; color: var(--text2);
+}
+.start-fret-row input { width: 56px; }
+
+.preview-area {
+  margin-top: 12px; padding: 12px;
+  background: var(--bg2); border-radius: var(--radius);
+  display: flex; align-items: center; gap: 14px;
+}
+.preview-label { font-size: 11px; color: var(--text2); }
+
+/* Chord lyric in modal */
+.chord-lyric-row {
+  margin-top: 10px;
+}
+
+/* SVG diagram */
+.chord-diagram { display: block; }
+</style>
+</head>
+<body>
+
+<header id="app-header">
+  <div class="logo">🎸 <span>ギター</span>楽譜メモ</div>
+  <div id="header-actions"></div>
+</header>
+
+<div id="app">
+  <!-- 曲一覧 -->
+  <div id="screen-list" class="screen active">
+    <div class="list-header">
+      <div>
+        <h2>マイ楽譜</h2>
+        <div class="sub" id="song-count-label"></div>
+      </div>
+      <button class="btn btn-accent" onclick="openNewSong()">＋ 新しい曲</button>
+    </div>
+    <div id="song-grid" class="song-grid"></div>
+  </div>
+
+  <!-- 楽譜表示 -->
+  <div id="screen-score" class="screen">
+    <div class="score-nav">
+      <button class="btn btn-ghost btn-sm" onclick="goList()">← 一覧へ</button>
+      <div class="score-title" id="score-title-text"></div>
+      <button class="btn btn-sm" onclick="openEditor()">✎ 編集</button>
+    </div>
+    <div id="score-body" class="score-body"></div>
+  </div>
+
+  <!-- 編集画面 -->
+  <div id="screen-editor" class="screen">
+    <div class="editor-nav">
+      <button class="btn btn-ghost btn-sm" onclick="cancelEdit()">← 戻る</button>
+      <div class="editor-nav-title" id="editor-nav-title">曲を編集</div>
+      <button class="btn btn-accent btn-sm" onclick="saveSong()">保存</button>
+    </div>
+    <div class="field-group">
+      <label class="field-label">曲名</label>
+      <input type="text" id="inp-title" placeholder="例: Yesterday, 夜に駆ける ...">
+    </div>
+    <div class="field-group">
+      <div class="lines-header">
+        <span class="field-label">歌詞 &amp; コード</span>
+        <button class="btn btn-sm" onclick="addLine()">＋ 行を追加</button>
+      </div>
+      <div id="lines-container"></div>
+    </div>
+  </div>
+</div>
+
+<!-- コード編集モーダル -->
+<div id="chord-overlay" class="overlay hidden">
+  <div class="modal">
+    <div class="modal-title" id="modal-heading">コードを追加</div>
+
+    <div class="field-group">
+      <label class="field-label">コード名</label>
+      <input type="text" id="inp-chord-name" placeholder="例: Am, G7, Fm7, Eb">
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">歌詞（このコードから始まる部分）</label>
+      <input type="text" id="inp-chord-lyric" placeholder="例: I know your, 夜が明ける ...">
+    </div>
+
+    <div class="field-group">
+      <label class="field-label">フレット図</label>
+      <div class="fret-wrap">
+        <div class="fret-board">
+          <div class="fret-top-row" id="fret-num-row"></div>
+          <div class="fret-main-row">
+            <div id="str-labels"></div>
+            <div id="fret-rows"></div>
+          </div>
+          <div class="barre-row">
+            <span>バレー:</span>
+            <input type="number" id="inp-barre" min="0" max="12" value="0">
+            <span>フレット目（0=なし）</span>
+          </div>
+          <div class="start-fret-row">
+            <span>表示開始フレット:</span>
+            <input type="number" id="inp-start-fret" min="1" max="12" value="1">
+          </div>
+        </div>
+        <div class="fret-hints">
+          <div><b>左クリック</b> → 押弦 ●</div>
+          <div><b>右クリック</b> → 開放 ○</div>
+          <div><b>右ダブル</b> → ミュート ✕</div>
+          <div><b>もう一度クリック</b> → 解除</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="preview-area">
+      <span class="preview-label">プレビュー</span>
+      <div id="chord-preview"></div>
+      <div id="preview-name" style="font-family:var(--font-mono);font-size:13px;color:var(--accent);margin-left:4px;"></div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-accent" onclick="confirmChord()">確定</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Constants ───────────────────────────────────────────────
+const STRINGS = ['e','B','G','D','A','E']; // 細→太 (表示順)
+const FRETS   = 5;
+
+// ─── State ───────────────────────────────────────────────────
+let songs = [];
+let currentIdx = null;   // 現在の曲index
+let editSong  = null;    // 編集中コピー
+let fretState = [];      // [{type:'none'|'dot'|'open'|'muted', fret:N}]
+
+// ─── Persistence ─────────────────────────────────────────────
+function load() {
+  try { songs = JSON.parse(localStorage.getItem('gtr_songs') || '[]'); } catch(e){ songs=[]; }
+}
+function save() {
+  localStorage.setItem('gtr_songs', JSON.stringify(songs));
+}
+
+// ─── Navigation ──────────────────────────────────────────────
+function setScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goList() {
+  setScreen('screen-list');
+  renderList();
+}
+
+function goScore(idx) {
+  currentIdx = idx;
+  setScreen('screen-score');
+  renderScore();
+}
+
+function openEditor() {
+  editSong = JSON.parse(JSON.stringify(songs[currentIdx]));
+  setScreen('screen-editor');
+  document.getElementById('editor-nav-title').textContent = '曲を編集';
+  renderEditor();
+}
+
+function openNewSong() {
+  editSong = { title:'', lines:[] };
+  currentIdx = null;
+  setScreen('screen-editor');
+  document.getElementById('editor-nav-title').textContent = '新しい曲';
+  renderEditor();
+}
+
+function cancelEdit() {
+  if (currentIdx !== null) goScore(currentIdx);
+  else goList();
+}
+
+// ─── List ────────────────────────────────────────────────────
+function renderList() {
+  const grid = document.getElementById('song-grid');
+  document.getElementById('song-count-label').textContent =
+    songs.length ? `${songs.length}曲` : '';
+  if (!songs.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
+      <div class="icon">🎼</div>
+      <p>まだ曲がありません。<br>「＋ 新しい曲」で追加してみましょう。</p>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = songs.map((s,i) => {
+    const chordCount = s.lines.reduce((a,l)=>a+((l.segments||l.chords||[]).filter(x=>x.chord||x.name).length), 0);
+    return `<div class="song-card">
+      <div onclick="goScore(${i})" style="flex:1">
+        <div class="song-card-title">${esc(s.title||'無題')}</div>
+        <div class="song-card-meta">${s.lines.length} 行 · コード ${chordCount} 個</div>
+      </div>
+      <div class="song-card-actions">
+        <button class="btn btn-sm" onclick="event.stopPropagation();editIdx(${i})">編集</button>
+        <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();deleteSong(${i})">削除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function editIdx(i) {
+  currentIdx = i;
+  openEditor();
+}
+
+function deleteSong(i) {
+  if (!confirm(`「${songs[i].title||'無題'}」を削除しますか？`)) return;
+  songs.splice(i,1); save(); renderList();
+}
+
+// ─── Score ───────────────────────────────────────────────────
+// データ後方互換: line.segments がなければ line.chords から変換
+function getSegments(line) {
+  if (line.segments) return line.segments;
+  // 旧データ: chords配列から変換
+  const segs = (line.chords||[]).map(c => ({ lyric: c.lyric||'', chord: c }));
+  if (line.lyric) segs.push({ lyric: line.lyric, chord: null });
+  return segs;
+}
+
+function renderScore() {
+  const song = songs[currentIdx];
+  document.getElementById('score-title-text').textContent = song.title || '無題';
+  const body = document.getElementById('score-body');
+  body.innerHTML = song.lines.map(line => {
+    const segs = getSegments(line);
+    const hasAnyChord = segs.some(s => s.chord);
+    const items = segs.map(seg => {
+      const lyric = seg.lyric || '';
+      if (seg.chord) {
+        // コードあり:
+        //  .seg は縦積み (column)
+        //  コード名+図 → align-self:flex-start で歌詞の左端（先頭）に揃える
+        //  歌詞テキスト
+        return `<div class="seg">
+          <div class="seg-chord-area">
+            <div class="c-name">${esc(seg.chord.name)}</div>
+            ${chordSVG(seg.chord, 76, 58)}
+          </div>
+          <div class="seg-lyric">${esc(lyric)}</div>
+        </div>`;
+      } else {
+        // コードなし: 行の下端に揃える
+        return `<div class="seg seg-no-chord">
+          <div class="seg-lyric">${esc(lyric)}</div>
+        </div>`;
+      }
+    }).join('');
+    return `<div class="score-line">${items}</div>`;
+  }).join('');
+}
+
+// ─── Editor ──────────────────────────────────────────────────
+function renderEditor() {
+  document.getElementById('inp-title').value = editSong.title || '';
+  renderLines();
+}
+
+// 旧データをsegments形式に正規化
+function normalizeLine(line) {
+  if (line.segments) return line;
+  // 旧 chords 配列から変換
+  const segs = (line.chords||[]).map(c => ({ lyric: c.lyric||'', chord: c }));
+  if (line.lyric) segs.push({ lyric: line.lyric, chord: null });
+  return { segments: segs };
+}
+
+function renderLines() {
+  // まず全行を正規化
+  editSong.lines = editSong.lines.map(normalizeLine);
+  const c = document.getElementById('lines-container');
+  if (!editSong.lines.length) {
+    c.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--text2);font-size:14px;">
+      行がまだありません。「＋ 行を追加」で追加できます。</div>`;
+    return;
+  }
+  c.innerHTML = editSong.lines.map((line,li) => `
+    <div class="line-row">
+      <div class="line-row-head">
+        <span class="line-row-num">LINE ${li+1}</span>
+        <div style="display:flex;gap:6px;">
+          ${li>0?`<button class="btn btn-ghost btn-sm" onclick="moveLine(${li},-1)">↑</button>`:''}
+          ${li<editSong.lines.length-1?`<button class="btn btn-ghost btn-sm" onclick="moveLine(${li},1)">↓</button>`:''}
+          <button class="btn btn-sm btn-danger" onclick="deleteLine(${li})">削除</button>
+        </div>
+      </div>
+      <div class="chord-chips" id="chips-${li}">
+        ${renderChips(li)}
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="openAddSeg(${li})">＋ 歌詞＋コードを追加</button>
+    </div>`).join('');
+}
+
+function renderChips(li) {
+  const segs = editSong.lines[li].segments || [];
+  return segs.map((seg,si) => `
+    <div class="chip" onclick="openEditSeg(${li},${si})">
+      ${seg.chord ? `<span class="chip-name">${esc(seg.chord.name)}</span>` : '<span class="chip-name" style="color:var(--text3)">コードなし</span>'}
+      ${seg.lyric ? `<span class="chip-lyric">${esc(seg.lyric)}</span>` : ''}
+      <span class="chip-del" onclick="event.stopPropagation();deleteSeg(${li},${si})">×</span>
+    </div>`).join('');
+}
+
+function refreshChips(li) {
+  const el = document.getElementById('chips-'+li);
+  if (el) el.innerHTML = renderChips(li);
+}
+
+function addLine() {
+  editSong.lines.push({ segments:[] });
+  renderLines();
+  setTimeout(()=>{
+    const rows = document.querySelectorAll('.line-row');
+    rows[rows.length-1]?.scrollIntoView({behavior:'smooth',block:'nearest'});
+  },60);
+}
+
+function deleteLine(li) {
+  editSong.lines.splice(li,1);
+  renderLines();
+}
+
+function moveLine(li, dir) {
+  const arr = editSong.lines;
+  const to = li+dir;
+  if (to<0||to>=arr.length) return;
+  [arr[li],arr[to]] = [arr[to],arr[li]];
+  renderLines();
+}
+
+function deleteSeg(li,si) {
+  editSong.lines[li].segments.splice(si,1);
+  refreshChips(li);
+}
+
+function saveSong() {
+  editSong.title = document.getElementById('inp-title').value.trim();
+  if (currentIdx === null) {
+    songs.push(editSong);
+    currentIdx = songs.length - 1;
+  } else {
+    songs[currentIdx] = editSong;
+  }
+  save();
+  goScore(currentIdx);
+}
+
+// ─── Chord Modal ──────────────────────────────────────────────
+function initFret() {
+  fretState = STRINGS.map(()=>({ type:'none', fret:0 }));
+}
+
+// segCtx = { li, si } or { li, si:null }
+let segCtx = null;
+
+function openAddSeg(li) {
+  try {
+    segCtx = { li, si: null };
+    // normalizeLine で segments が必ず存在することを保証
+    if (!editSong.lines[li].segments) editSong.lines[li].segments = [];
+    initFret();
+    document.getElementById('inp-chord-name').value  = '';
+    document.getElementById('inp-chord-lyric').value = '';
+    document.getElementById('inp-barre').value       = '0';
+    document.getElementById('inp-start-fret').value  = '1';
+    document.getElementById('modal-heading').textContent = '歌詞＋コードを追加';
+    buildFretUI();
+    updatePreview();
+    document.getElementById('chord-overlay').classList.remove('hidden');
+  } catch(e) {
+    console.error('openAddSeg error:', e);
+  }
+}
+
+function openEditSeg(li, si) {
+  segCtx = { li, si };
+  const seg = editSong.lines[li].segments[si];
+  const c = seg.chord || {};
+  document.getElementById('inp-chord-name').value  = c.name  || '';
+  document.getElementById('inp-chord-lyric').value = seg.lyric || '';
+  document.getElementById('inp-barre').value       = c.barre || 0;
+  document.getElementById('inp-start-fret').value  = c.startFret || 1;
+  fretState = c.strings ? JSON.parse(JSON.stringify(c.strings))
+                        : STRINGS.map(()=>({type:'none',fret:0}));
+  document.getElementById('modal-heading').textContent = '歌詞＋コードを編集';
+  buildFretUI();
+  updatePreview();
+  document.getElementById('chord-overlay').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('chord-overlay').classList.add('hidden');
+}
+
+function buildFretUI() {
+  const sf = parseInt(document.getElementById('inp-start-fret').value)||1;
+  // num row
+  const numRow = document.getElementById('fret-num-row');
+  numRow.innerHTML = '';
+  for(let f=0;f<FRETS;f++){
+    const d=document.createElement('div');
+    d.className='fret-num-cell'; d.textContent=sf+f;
+    numRow.appendChild(d);
+  }
+  // string labels
+  const strEl = document.getElementById('str-labels');
+  strEl.innerHTML='';
+  STRINGS.forEach(s=>{
+    const d=document.createElement('div');
+    d.className='str-label'; d.textContent=s;
+    strEl.appendChild(d);
+  });
+  // fret cells
+  const rows = document.getElementById('fret-rows');
+  rows.innerHTML='';
+  STRINGS.forEach((s,si)=>{
+    const row=document.createElement('div');
+    row.className='fret-row';
+    for(let f=0;f<FRETS;f++){
+      const cell=document.createElement('div');
+      cell.className='fret-cell';
+      cell.id=`fc-${si}-${f}`;
+      applyCellStyle(cell, si, f);
+      cell.addEventListener('click',()=>onCellClick(si,f));
+      cell.addEventListener('contextmenu',e=>{ e.preventDefault(); onCellRight(si,f); });
+      row.appendChild(cell);
+    }
+    rows.appendChild(row);
+  });
+}
+
+function applyCellStyle(cell, si, f) {
+  const st = fretState[si];
+  cell.className = 'fret-cell';
+  if(st.type==='dot'   && st.fret===f) cell.classList.add('dot');
+  if(st.type==='open'  && f===0)       cell.classList.add('open');
+  if(st.type==='muted' && f===0)       cell.classList.add('muted');
+}
+
+function refreshCell(si) {
+  for(let f=0;f<FRETS;f++){
+    const c=document.getElementById(`fc-${si}-${f}`);
+    if(c) applyCellStyle(c,si,f);
+  }
+  updatePreview();
+}
+
+function onCellClick(si, f) {
+  const st=fretState[si];
+  if(st.type==='dot'&&st.fret===f) fretState[si]={type:'none',fret:0};
+  else fretState[si]={type:'dot',fret:f};
+  refreshCell(si);
+}
+
+let rightClickTimer = {};
+function onCellRight(si, f) {
+  const st=fretState[si];
+  const now=Date.now();
+  const last=rightClickTimer[si]||0;
+  if(now-last<400) { // ダブル右クリック→ミュート
+    fretState[si]={type:'muted',fret:0};
+  } else {
+    if(st.type==='open') fretState[si]={type:'none',fret:0};
+    else fretState[si]={type:'open',fret:0};
+  }
+  rightClickTimer[si]=now;
+  refreshCell(si);
+}
+
+document.getElementById('inp-start-fret').addEventListener('input',()=>{ buildFretUI(); updatePreview(); });
+document.getElementById('inp-barre').addEventListener('input',()=>updatePreview());
+document.getElementById('inp-chord-name').addEventListener('input',()=>updatePreview());
+
+function updatePreview() {
+  const data = currentModalChord();
+  if (data) {
+    document.getElementById('chord-preview').innerHTML = chordSVG(data, 76, 60);
+    document.getElementById('preview-name').textContent = data.name;
+  } else {
+    // コード名未入力時はプレビューをクリア
+    document.getElementById('chord-preview').innerHTML = '';
+    document.getElementById('preview-name').textContent = '';
+  }
+}
+
+function currentModalChord() {
+  const name = document.getElementById('inp-chord-name').value.trim();
+  if (!name) return null;
+  return {
+    name,
+    barre:     parseInt(document.getElementById('inp-barre').value)||0,
+    startFret: parseInt(document.getElementById('inp-start-fret').value)||1,
+    strings:   JSON.parse(JSON.stringify(fretState)),
+  };
+}
+
+function confirmChord() {
+  try {
+    const lyric = document.getElementById('inp-chord-lyric').value;
+    const chord = currentModalChord(); // コード名なしならnull
+    if (!chord && !lyric.trim()) {
+      alert('歌詞かコード名のどちらかを入力してください'); return;
+    }
+    const seg = { lyric, chord };
+    const {li, si} = segCtx;
+    const line = editSong.lines[li];
+    if (!line.segments) line.segments = [];
+    if (si === null) {
+      line.segments.push(seg);
+    } else {
+      line.segments[si] = seg;
+    }
+    refreshChips(li);
+    closeModal();
+  } catch(e) {
+    console.error('confirmChord error:', e);
+    alert('エラーが発生しました: ' + e.message);
+  }
+}
+
+// ─── Chord SVG (横向き: ナット=左, 弦=横, フレット=縦) ────────
+// chordSVG: 横向き（ナット=左、1弦=上、6弦=下）
+// マーカー列（○✕）はグリッド左に完全分離
+function chordSVG(chord, w, h) {
+  const strings   = chord.strings || STRINGS.map(()=>({type:'none',fret:0}));
+  const barre     = chord.barre || 0;
+  const startFret = chord.startFret || 1;
+  const ns = STRINGS.length; // 6
+  const nf = FRETS;          // 5
+
+  // ── サイズ設計 ──────────────────────────────
+  const markerColW = 14; // ○✕専用列の幅（グリッドと完全分離）
+  const markerGap  = 4;  // マーカー列とナットの間隔
+  const dotR       = 4;  // ドットの半径（少し小さく）
+  const padT       = dotR + 2; // 上端: 1弦ドットがはみ出さないよう
+  const padB       = dotR + 2; // 下端: 6弦ドットがはみ出さないよう
+  const padR       = startFret > 1 ? 22 : 3;
+
+  // グリッド左端 = マーカー列 + gap
+  const gx = markerColW + markerGap;
+  const gy = padT;
+  const gw = w - gx - padR;
+  const gh = h - padT - padB;
+
+  // 弦の間隔: 上下端の弦もドットが収まるよう内側に配置
+  const ch = gh / (ns - 1);
+  const cw = gw / nf;
+
+  // ── グリッド線 ──────────────────────────────
+  let grid = '';
+  // 弦（横線）
+  for (let s = 0; s < ns; s++) {
+    const y = gy + s * ch;
+    grid += `<line x1="${gx}" y1="${y}" x2="${gx+gw}" y2="${y}" stroke="#9b9080" stroke-width="0.6"/>`;
+  }
+  // フレット（縦線）、0フレット=ナットは太く
+  for (let f = 0; f <= nf; f++) {
+    const x = gx + f * cw;
+    grid += `<line x1="${x}" y1="${gy}" x2="${x}" y2="${gy+gh}" stroke="#9b9080" stroke-width="${f===0 ? 2.8 : 0.6}"/>`;
+  }
+
+  // ── ○✕マーカー（マーカー列内に収める） ──────
+  let markers = '';
+  const mCx = markerColW / 2; // マーカー列の中心X
+  strings.forEach((st, si) => {
+    const cy = gy + si * ch;
+    if (st.type === 'open') {
+      markers += `<circle cx="${mCx}" cy="${cy}" r="3.5" fill="none" stroke="#1a1814" stroke-width="1.4"/>`;
+    } else if (st.type === 'muted') {
+      const d = 3;
+      markers += `<line x1="${mCx-d}" y1="${cy-d}" x2="${mCx+d}" y2="${cy+d}" stroke="#1a1814" stroke-width="1.5" stroke-linecap="round"/>`;
+      markers += `<line x1="${mCx+d}" y1="${cy-d}" x2="${mCx-d}" y2="${cy+d}" stroke="#1a1814" stroke-width="1.5" stroke-linecap="round"/>`;
+    }
+  });
+
+  // ── バレー ──────────────────────────────────
+  let barreEl = '';
+  if (barre >= 1 && barre <= nf) {
+    const bx = gx + (barre - 1) * cw + cw * 0.1;
+    const bw2 = cw * 0.8;
+    const br  = bw2 * 0.2;
+    barreEl = `<rect x="${bx}" y="${gy}" width="${bw2}" height="${gh}" rx="${br}" fill="#1a1814" opacity="0.83"/>`;
+  }
+
+  // ── 押弦ドット ──────────────────────────────
+  let dots = '';
+  strings.forEach((st, si) => {
+    if (st.type !== 'dot') return;
+    const cx = gx + st.fret * cw + cw / 2;
+    const cy = gy + si * ch;
+    dots += `<circle cx="${cx}" cy="${cy}" r="${dotR}" fill="#1a1814"/>`;
+  });
+
+  // ── startFret ラベル ─────────────────────────
+  let sfLabel = '';
+  if (startFret > 1) {
+    sfLabel = `<text x="${gx+gw+3}" y="${gy+10}" font-size="9" fill="#9b9080" font-family="monospace">${startFret}fr</text>`;
+  }
+
+  return `<svg class="chord-diagram" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+    ${grid}${barreEl}${dots}${markers}${sfLabel}
+  </svg>`;
+}
+
+// ─── Util ────────────────────────────────────────────────────
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ─── Init ────────────────────────────────────────────────────
+load();
+goList();
+</script>
+</body>
+</html>
